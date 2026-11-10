@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>AI猜拳遊戲</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    text-align:center;
+    background:#f4f6f8;
+    margin:0;
+    padding:20px;
+}
+
+h1{
+    color:#333;
+}
+
+#webcam-container{
+    margin-top:10px;
+}
+
+canvas{
+    border-radius:10px;
+}
+
+#result{
+    margin-top:20px;
+    font-size:28px;
+    font-weight:bold;
+}
+
+#player{
+    font-size:24px;
+    color:blue;
+}
+
+#computer{
+    font-size:24px;
+    color:red;
+}
+
+button{
+    padding:12px 25px;
+    font-size:18px;
+    margin:10px;
+    border:none;
+    border-radius:10px;
+    background:#2196F3;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#1976D2;
+}
+</style>
+
+</head>
+<body>
+
+<h1>✌️ AI猜拳遊戲 ✊</h1>
+
+<button onclick="startGame()">開始遊戲</button>
+
+<div id="webcam-container"></div>
+
+<div id="player"></div>
+<div id="computer"></div>
+<div id="result"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
+
+<script>
+
+const URL="https://teachablemachine.withgoogle.com/models/QXbrSI0yV/";
+
+let model;
+let webcam;
+let maxPredictions;
+
+async function startGame(){
+
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
+
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+
+    webcam = new tmImage.Webcam(
+        300,
+        300,
+        true
+    );
+
+    await webcam.setup();
+    await webcam.play();
+
+    window.requestAnimationFrame(loop);
+
+    document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+}
+
+async function loop() {
+    webcam.update();
+    await predict();
+    window.requestAnimationFrame(loop);
+}
+
+let playing=false;
+
+async function predict(){
+
+    if(playing) return;
+
+    const prediction = await model.predict(webcam.canvas);
+
+    let highest = prediction[0];
+
+    for(let i=1;i<prediction.length;i++){
+        if(prediction[i].probability > highest.probability){
+            highest = prediction[i];
+        }
+    }
+
+    const playerChoice = highest.className;
+
+    if(highest.probability < 0.90){
+        return;
+    }
+
+    if(playerChoice==="沒有"){
+        return;
+    }
+
+    playing=true;
+
+    playRPS(playerChoice);
+
+    setTimeout(()=>{
+        playing=false;
+    },3000);
+}
+
+function playRPS(player){
+
+    const choices=["剪刀","石頭","布"];
+
+    const computer=
+      choices[Math.floor(Math.random()*3)];
+
+    let result="";
+
+    if(player===computer){
+        result="平手 😄";
+    }
+    else if(
+        (player==="剪刀" && computer==="布") ||
+        (player==="石頭" && computer==="剪刀") ||
+        (player==="布" && computer==="石頭")
+    ){
+        result="你贏了 🎉";
+    }
+    else{
+        result="電腦贏了 😆";
+    }
+
+    document.getElementById("player").innerHTML=
+        "你出拳：" + player;
+
+    document.getElementById("computer").innerHTML=
+        "電腦出拳：" + computer;
+
+    document.getElementById("result").innerHTML=
+        result;
+}
+
+</script>
+
+</body>
+</html>
